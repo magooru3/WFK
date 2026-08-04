@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kids Wordle</title>
+<style>
+  :root {
+    --correct: #6aaa64;
+    --present: #c9b458;
+    --absent: #787c7f;
+    --border: #d3d6da;
+    --border-active: #878a8c;
+    --text: #1a1a1b;
+    --bg: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 12px 8px 24px;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  header {
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    letter-spacing: 0.05em;
+    margin: 4px 0;
+  }
+
+  .subtitle {
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 10px;
+  }
+
+  .grade-selector {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .grade-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 2px solid var(--border-active);
+    background: var(--bg);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s, color 0.15s;
+  }
+
+  .grade-btn:hover { transform: translateY(-1px); }
+
+  .grade-btn.active {
+    background: var(--text);
+    color: #fff;
+    border-color: var(--text);
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 8px 0 4px;
+    flex-wrap: wrap;
+  }
+
+  .icon-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 2px solid var(--border-active);
+    background: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .icon-btn:hover { background: #f4f4f4; }
+  .icon-btn:disabled { opacity: 0.4; cursor: default; }
+
+  #message-bar {
+    min-height: 28px;
+    font-size: 0.95rem;
+    text-align: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    transition: opacity 0.2s;
+  }
+
+  #board {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    gap: 6px;
+    margin: 10px auto;
+    padding: 8px;
+    width: min(340px, 92vw);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+
+  .tile {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    user-select: none;
+    transform-style: preserve-3d;
+    transition: transform 0.15s;
+  }
+
+  .tile.filled {
+    border-color: var(--border-active);
+    animation: pop 0.1s ease;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+
+  .tile.flip {
+    animation: flip 0.55s ease forwards;
+  }
+
+  @keyframes flip {
+    0% { transform: rotateX(0deg); }
+    50% { transform: rotateX(90deg); }
+    51% { transform: rotateX(90deg); }
+    100% { transform: rotateX(0deg); }
+  }
+
+  .tile.correct, .tile.present, .tile.absent {
+    color: #fff;
+    border: none;
+  }
+  .tile.correct { background: var(--correct); }
+  .tile.present { background: var(--present); }
+  .tile.absent { background: var(--absent); }
+
+  .shake { animation: shake 0.4s; }
+  @keyframes shake {
+    10%, 90% { transform: translateX(-2px); }
+    20%, 80% { transform: translateX(4px); }
+    30%, 50%, 70% { transform: translateX(-8px); }
+    40%, 60% { transform: translateX(8px); }
+  }
+
+  .bounce .tile { animation: bounce 0.4s ease; }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-14px); }
+    50% { transform: translateY(0); }
+  }
+
+  #keyboard {
+    width: min(500px, 98vw);
+    margin: 8px auto 0;
+    user-select: none;
+  }
+
+  .kb-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .key {
+    flex: 1;
+    max-width: 44px;
+    height: 52px;
+    border-radius: 6px;
+    border: none;
+    background: #d3d6da;
+    color: var(--text);
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .key.wide { max-width: 66px; font-size: 0.7rem; }
+  .key:active { background: #b9bcbf; }
+
+  .key.correct { background: var(--correct); color: #fff; }
+  .key.present { background: var(--present); color: #fff; }
+  .key.absent { background: var(--absent); color: #fff; }
+
+  #hint-box {
+    max-width: 340px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #444;
+    min-height: 20px;
+    margin: 2px 0;
+  }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+
+  #overlay.show { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    width: min(360px, 90vw);
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  .modal h2 { margin: 0 0 8px; font-size: 1.5rem; }
+  .modal .word-reveal {
+    font-size: 1.8rem;
+    letter-spacing: 0.1em;
+    color: var(--correct);
+    margin: 10px 0;
+  }
+  .modal .definition {
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: #333;
+    margin-bottom: 16px;
+  }
+
+  .play-again {
+    background: var(--correct);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  .play-again:hover { filter: brightness(1.05); }
+
+  .confetti-piece {
+    position: fixed;
+    top: -10px;
+    width: 8px;
+    height: 14px;
+    opacity: 0.9;
+    z-index: 60;
+    animation: fall linear forwards;
+  }
+
+  @keyframes fall {
+    to { transform: translateY(105vh) rotate(360deg); opacity: 0.4; }
+  }
+
+  @media (max-width: 380px) {
+    .tile { font-size: 1.4rem; }
+    .key { height: 46px; font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐣 Kids Wordle</h1>
+  <div class="subtitle">Guess the 5-letter word in 6 tries!</div>
+  <div class="grade-selector" id="grade-selector">
+    <button class="grade-btn" data-grade="k1">K–1</button>
+    <button class="grade-btn" data-grade="g23">2–3</button>
+    <button class="grade-btn" data-grade="g45">4–5</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="icon-btn" id="hint-btn">💡 Hint</button>
+  <button class="icon-btn" id="new-word-btn">🔄 New Word</button>
+</div>
+<div id="hint-box"></div>
+<div id="message-bar"></div>
+
+<div id="board"></div>
+
+<div id="keyboard"></div>
+
+<div id="overlay">
+  <div class="modal">
+    <h2 id="modal-title">🎉 You got it!</h2>
+    <div class="word-reveal" id="modal-word"></div>
+    <div class="definition" id="modal-definition"></div>
+    <button class="play-again" id="play-again-btn">Play Again</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Word lists ----------
+  const WORD_LISTS = {
+    k1: [
+      ["HAPPY", "This word means feeling really glad and smiling."],
+      ["WATER", "You drink this and swim in it."],
+      ["HOUSE", "A building where a family lives."],
+      ["SMILE", "Your face does this when you are happy."],
+      ["APPLE", "A crunchy fruit that can be red or green."],
+      ["HORSE", "A big animal you can ride."],
+      ["MUSIC", "Sounds you can sing or dance to."],
+      ["PARTY", "A fun celebration with friends and treats."],
+      ["SHEEP", "A fluffy farm animal that says baa."],
+      ["SNAKE", "A long animal with no legs that slithers."],
+      ["TIGER", "A big wild cat with orange and black stripes."],
+      ["TOOTH", "You use this in your mouth to chew."],
+      ["BREAD", "You use this to make a sandwich."],
+      ["CHAIR", "You sit on this."],
+      ["CLOCK", "This tells you what time it is."],
+      ["CANDY", "A sweet treat you love to eat."],
+      ["CLOWN", "A funny person at the circus."],
+      ["MOMMY", "Another word for your mother."],
+      ["SUGAR", "A sweet white ingredient used in baking."],
+      ["BUNNY", "A soft animal that hops and has long ears."],
+      ["PUPPY", "A baby dog."],
+      ["KITTY", "A baby cat."],
+      ["BEACH", "A sandy place next to the ocean."],
+      ["GRAPE", "A small round fruit that grows in bunches."],
+      ["LEMON", "A sour yellow fruit."],
+      ["PIZZA", "A round food with cheese and toppings."],
+      ["ROBOT", "A machine that can move and do jobs."],
+      ["SHARK", "A big fish with sharp teeth in the ocean."],
+      ["WHALE", "A huge animal that lives in the ocean."],
+      ["ZEBRA", "An animal like a horse with black and white stripes."]
+    ],
+    g23: [
+      ["PLANT", "A living thing that grows in soil, like a flower or tree."],
+      ["STORY", "A tale you read or tell, with characters and events."],
+      ["DANCE", "To move your body to music."],
+      ["OCEAN", "A huge body of salty water."],
+      ["RIVER", "A long stream of water that flows to the sea."],
+      ["FIELD", "A big open piece of grassy land."],
+      ["CLOUD", "A fluffy white shape floating in the sky."],
+      ["STORM", "Wild weather with rain, wind, or thunder."],
+      ["LIGHT", "Something that helps you see in the dark."],
+      ["NIGHT", "The time of day when it is dark and you sleep."],
+      ["SOUND", "Something you hear with your ears."],
+      ["SMELL", "Something you notice with your nose."],
+      ["TASTE", "Something you notice with your tongue."],
+      ["TOUCH", "Something you feel with your fingers."],
+      ["GRASS", "The green plant that covers a lawn."],
+      ["STONE", "A small hard rock."],
+      ["BRICK", "A hard block used to build walls."],
+      ["GLASS", "A clear material used to make windows."],
+      ["PAINT", "Colorful liquid used to make pictures."],
+      ["BRUSH", "A tool with bristles used to paint or comb hair."],
+      ["SPOON", "A utensil you use to eat soup or cereal."],
+      ["TABLE", "A piece of furniture you eat or work on."],
+      ["CHESS", "A board game played with kings and queens."],
+      ["MONEY", "Coins and bills used to buy things."],
+      ["PIANO", "A big instrument with black and white keys."],
+      ["FRUIT", "A sweet food that grows on plants, like an apple."],
+      ["BERRY", "A small round juicy fruit that often grows on a bush."],
+      ["HONEY", "A sweet golden food made by bees."]
+    ],
+    g45: [
+      ["BRAVE", "Having courage even when you are scared."],
+      ["QUICK", "Moving very fast."],
+      ["PLANE", "A flying machine that carries people in the sky."],
+      ["EAGLE", "A large bird that hunts and flies very high."],
+      ["MAGIC", "Amazing things that seem impossible, like in fairy tales."],
+      ["DREAM", "Pictures and stories your mind makes while you sleep."],
+      ["PEACE", "A calm feeling with no fighting or noise."],
+      ["POWER", "The strength or energy to do something."],
+      ["SHINE", "To glow brightly, like the sun."],
+      ["SPARK", "A tiny flash of light or fire."],
+      ["TRUST", "Believing that someone will not let you down."],
+      ["HONOR", "Great respect shown to someone who did something good."],
+      ["PRIDE", "A happy feeling about something you did well."],
+      ["GLORY", "Great fame and honor for doing something amazing."],
+      ["LEARN", "To gain new knowledge or a new skill."],
+      ["STUDY", "To work hard at learning something."],
+      ["WORLD", "The whole planet Earth and everything on it."],
+      ["EARTH", "The planet we all live on."],
+      ["SPACE", "The huge area beyond Earth with stars and planets."],
+      ["GHOST", "A spooky spirit in stories, said to haunt places."],
+      ["GIANT", "A huge, very tall creature in stories."],
+      ["CROWN", "A fancy hat worn by a king or queen."],
+      ["SWORD", "A long sharp blade used by knights."],
+      ["ARROW", "A pointed stick shot from a bow."],
+      ["FLAME", "The bright hot part of a fire."],
+      ["FROST", "A thin icy layer that forms on cold mornings."],
+      ["NORTH", "The direction toward the top of a map."],
+      ["SOUTH", "The direction toward the bottom of a map."],
+      ["BRAIN", "The organ in your head that helps you think."],
+      ["HEART", "The organ that pumps blood and can mean love."],
+      ["SOLVE", "To figure out the answer to a problem."],
+      ["THINK", "To use your brain to have ideas."],
+      ["WRITE", "To put words down on paper."],
+      ["SPELL", "To say or write the letters of a word in order."],
+      ["LOGIC", "Clear thinking used to solve problems."],
+      ["SCALE", "A tool used to weigh things, or the size of something."],
+      ["GRAPH", "A picture that shows information using bars or lines."]
+    ]
+  };
+
+  const GRADE_LABELS = { k1: "K–1", g23: "2–3", g45: "4–5" };
+
+  // ---------- State ----------
+  let grade = "k1";
+  let targetWord = "";
+  let targetHint = "";
+  let guesses = [];
+  let currentGuess = "";
+  let currentRow = 0;
+  let gameOver = false;
+  let hintUsed = false;
+  const ROWS = 6;
+  const COLS = 5;
+  const keyStatus = {};
+
+  const KB_ROWS = [
+    ["Q","W","E","R","T","Y","U","I","O","P"],
+    ["A","S","D","F","G","H","J","K","L"],
+    ["ENTER","Z","X","C","V","B","N","M","BACK"]
+  ];
+
+  // ---------- DOM refs ----------
+  const boardEl = document.getElementById("board");
+  const keyboardEl = document.getElementById("keyboard");
+  const messageBar = document.getElementById("message-bar");
+  const hintBox = document.getElementById("hint-box");
+  const hintBtn = document.getElementById("hint-btn");
+  const newWordBtn = document.getElementById("new-word-btn");
+  const gradeSelector = document.getElementById("grade-selector");
+  const overlay = document.getElementById("overlay");
+  const modalTitle = document.getElementById("modal-title");
+  const modalWord = document.getElementById("modal-word");
+  const modalDefinition = document.getElementById("modal-definition");
+  const playAgainBtn = document.getElementById("play-again-btn");
+
+  // ---------- Sound effects (Web Audio API, no external files) ----------
+  let audioCtx = null;
+  function getCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+
+  function beep(freq, duration, type, startTime, gainVal) {
+    const ctx = getCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.value = freq;
+    gain.gain.value = gainVal || 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const t = ctx.currentTime + (startTime || 0);
+    osc.start(t);
+    gain.gain.setValueAtTime(gain.gain.value, t + duration - 0.03);
+    gain.gain.linearRampToValueAtTime(0, t + duration);
+    osc.stop(t + duration);
+  }
+
+  function playCorrectSound() {
+    beep(523.25, 0.12, "triangle", 0);
+    beep(659.25, 0.14, "triangle", 0.1);
+  }
+  function playPresentSound() {
+    beep(440, 0.15, "sine", 0);
+  }
+  function playWrongSound() {
+    beep(180, 0.2, "sawtooth", 0, 0.06);
+  }
+  function playWinSound() {
+    const notes = [523.25, 587.33, 659.25, 783.99, 1046.5];
+    notes.forEach((f, i) => beep(f, 0.22, "triangle", i * 0.13, 0.09));
+  }
+  function playLoseSound() {
+    beep(300, 0.25, "sawtooth", 0, 0.07);
+    beep(220, 0.35, "sawtooth", 0.2, 0.07);
+  }
+
+  // ---------- Build board ----------
+  function buildBoard() {
+    boardEl.innerHTML = "";
+    for (let r = 0; r < ROWS; r++) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.id = "row-" + r;
+      for (let c = 0; c < COLS; c++) {
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.id = "tile-" + r + "-" + c;
+        row.appendChild(tile);
+      }
+      boardEl.appendChild(row);
+    }
+  }
+
+  // ---------- Build keyboard ----------
+  function buildKeyboard() {
+    keyboardEl.innerHTML = "";
+    KB_ROWS.forEach((rowKeys) => {
+      const rowEl = document.createElement("div");
+      rowEl.className = "kb-row";
+      rowKeys.forEach((k) => {
+        const btn = document.createElement("button");
+        btn.className = "key";
+        btn.id = "key-" + k;
+        btn.textContent = k === "BACK" ? "⌫" : (k === "ENTER" ? "Enter" : k);
+        if (k === "ENTER" || k === "BACK") btn.classList.add("wide");
+        btn.addEventListener("click", () => {
+          btn.blur();
+          handleKeyInput(k);
+        });
+        rowEl.appendChild(btn);
+      });
+      keyboardEl.appendChild(rowEl);
+    });
+  }
+
+  // ---------- Game setup ----------
+  function pickWord(g) {
+    const list = WORD_LISTS[g];
+    const entry = list[Math.floor(Math.random() * list.length)];
+    return { word: entry[0], hint: entry[1] };
+  }
+
+  function resetGame(newGrade) {
+    if (newGrade) grade = newGrade;
+    const picked = pickWord(grade);
+    targetWord = picked.word;
+    targetHint = picked.hint;
+    guesses = [];
+    currentGuess = "";
+    currentRow = 0;
+    gameOver = false;
+    hintUsed = false;
+    Object.keys(keyStatus).forEach((k) => delete keyStatus[k]);
+    hintBox.textContent = "";
+    setMessage("");
+    overlay.classList.remove("show");
+    hintBtn.disabled = false;
+    buildBoard();
+    buildKeyboard();
+    document.querySelectorAll(".grade-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.grade === grade);
+    });
+  }
+
+  function setMessage(text) {
+    messageBar.textContent = text;
+  }
+
+  // ---------- Input handling ----------
+  function handleKeyInput(key) {
+    if (gameOver) return;
+    if (key === "ENTER") {
+      submitGuess();
+    } else if (key === "BACK") {
+      currentGuess = currentGuess.slice(0, -1);
+      renderCurrentRow();
+    } else if (/^[A-Z]$/.test(key)) {
+      if (currentGuess.length < COLS) {
+        currentGuess += key;
+        renderCurrentRow();
+      }
+    }
+  }
+
+  function renderCurrentRow() {
+    for (let c = 0; c < COLS; c++) {
+      const tile = document.getElementById("tile-" + currentRow + "-" + c);
+      const letter = currentGuess[c] || "";
+      tile.textContent = letter;
+      tile.classList.toggle("filled", !!letter);
+    }
+  }
+
+  function shakeRow() {
+    const row = document.getElementById("row-" + currentRow);
+    row.classList.add("shake");
+    setTimeout(() => row.classList.remove("shake"), 400);
+  }
+
+  function submitGuess() {
+    if (currentGuess.length < COLS) {
+      shakeRow();
+      setMessage("Not enough letters!");
+      return;
+    }
+    const result = evaluateGuess(currentGuess, targetWord);
+    revealRow(currentRow, currentGuess, result);
+    guesses.push(currentGuess);
+
+    const won = currentGuess === targetWord;
+    const lastRow = currentRow === ROWS - 1;
+
+    setTimeout(() => {
+      if (won) {
+        gameOver = true;
+        playWinSound();
+        launchConfetti();
+        showEndModal(true);
+      } else if (lastRow) {
+        gameOver = true;
+        playLoseSound();
+        showEndModal(false);
+      }
+    }, COLS * 120 + 400);
+
+    currentRow++;
+    currentGuess = "";
+  }
+
+  function evaluateGuess(guess, target) {
+    const result = new Array(COLS).fill("absent");
+    const targetLetters = target.split("");
+    const guessLetters = guess.split("");
+    const used = new Array(COLS).fill(false);
+
+    for (let i = 0; i < COLS; i++) {
+      if (guessLetters[i] === targetLetters[i]) {
+        result[i] = "correct";
+        used[i] = true;
+      }
+    }
+    for (let i = 0; i < COLS; i++) {
+      if (result[i] === "correct") continue;
+      const idx = targetLetters.findIndex(
+        (l, j) => !used[j] && l === guessLetters[i]
+      );
+      if (idx !== -1) {
+        result[i] = "present";
+        used[idx] = true;
+      }
+    }
+    return result;
+  }
+
+  function revealRow(rowIndex, guess, result) {
+    let anyPresent = false;
+    let anyCorrect = false;
+    for (let c = 0; c < COLS; c++) {
+      const tile = document.getElementById("tile-" + rowIndex + "-" + c);
+      const letter = guess[c];
+      const status = result[c];
+      setTimeout(() => {
+        tile.classList.add("flip");
+        setTimeout(() => {
+          tile.classList.add(status);
+          updateKeyStatus(letter, status);
+        }, 275);
+      }, c * 120);
+      if (status === "correct") anyCorrect = true;
+      if (status === "present") anyPresent = true;
+    }
+    setTimeout(() => {
+      if (guess === targetWord) {
+        // handled by win flow
+      } else if (anyCorrect || anyPresent) {
+        playPresentSound();
+      } else {
+        playWrongSound();
+      }
+      if (guess === targetWord) playCorrectSound();
+    }, COLS * 120 + 280);
+  }
+
+  function updateKeyStatus(letter, status) {
+    const rank = { absent: 0, present: 1, correct: 2 };
+    if (!keyStatus[letter] || rank[status] > rank[keyStatus[letter]]) {
+      keyStatus[letter] = status;
+      const keyEl = document.getElementById("key-" + letter);
+      if (keyEl) {
+        keyEl.classList.remove("correct", "present", "absent");
+        keyEl.classList.add(status);
+      }
+    }
+  }
+
+  // ---------- End of round ----------
+  function showEndModal(won) {
+    modalTitle.textContent = won ? "🎉 You got it!" : "So close! Nice try!";
+    modalWord.textContent = targetWord;
+    modalDefinition.textContent = targetHint;
+    overlay.classList.add("show");
+    setMessage(won ? "Great job!" : "The word was " + targetWord + ".");
+  }
+
+  playAgainBtn.addEventListener("click", () => {
+    playAgainBtn.blur();
+    resetGame();
+  });
+  newWordBtn.addEventListener("click", () => {
+    newWordBtn.blur();
+    resetGame();
+  });
+
+  // ---------- Hint ----------
+  hintBtn.addEventListener("click", () => {
+    hintBtn.blur();
+    if (gameOver) return;
+    hintBox.textContent = "💡 Hint: " + targetHint;
+    hintUsed = true;
+  });
+
+  // ---------- Grade selector ----------
+  gradeSelector.addEventListener("click", (e) => {
+    const btn = e.target.closest(".grade-btn");
+    if (!btn) return;
+    btn.blur();
+    resetGame(btn.dataset.grade);
+  });
+
+  // ---------- Physical keyboard ----------
+  // Buttons stay focused after a click/tap; without preventDefault a later
+  // Enter/Space keydown would re-activate that focused button natively
+  // (e.g. re-clicking the grade button and silently resetting the board).
+  document.addEventListener("keydown", (e) => {
+    if (overlay.classList.contains("show")) return;
+    const key = e.key.toUpperCase();
+    if (key === "ENTER") {
+      e.preventDefault();
+      handleKeyInput("ENTER");
+    } else if (key === "BACKSPACE") {
+      e.preventDefault();
+      handleKeyInput("BACK");
+    } else if (/^[A-Z]$/.test(key) && key.length === 1) {
+      e.preventDefault();
+      handleKeyInput(key);
+    }
+  });
+
+  // ---------- Confetti ----------
+  function launchConfetti() {
+    const colors = ["#6aaa64", "#c9b458", "#f4a261", "#e76f51", "#457b9d", "#e63946"];
+    const count = 80;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement("div");
+      piece.className = "confetti-piece";
+      piece.style.left = Math.random() * 100 + "vw";
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDuration = (2 + Math.random() * 1.5) + "s";
+      piece.style.transform = "rotate(" + Math.random() * 360 + "deg)";
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 3600);
+    }
+  }
+
+  // ---------- Init ----------
+  resetGame(grade);
+})();
+</script>
+</body>
+</html>
