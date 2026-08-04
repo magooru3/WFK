@@ -370,6 +370,11 @@
     border-radius: 14px;
     padding: 24px;
     width: min(360px, 90vw);
+    /* The score row and share button push the card close to the bottom of a
+       phone in landscape; cap it and let it scroll rather than clipping the
+       buttons off-screen under a long definition. */
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
     text-align: center;
     box-shadow: 0 10px 30px rgba(0,0,0,0.35);
     animation: modal-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
@@ -402,6 +407,25 @@
     line-height: 1.4;
   }
 
+  /* Win-only scoreboard: tries taken and hints used, as two pills. The
+     [hidden] rule has to re-beat `display: flex` or the attribute is
+     ignored and the row shows up on a loss too. */
+  .modal .score {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 16px;
+  }
+  .modal .score[hidden] { display: none; }
+  .modal .score span {
+    background: var(--hint-bg);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+
   .play-again {
     background: var(--correct);
     color: #fff;
@@ -415,6 +439,23 @@
     -webkit-touch-callout: none;
   }
   .play-again:hover { filter: brightness(1.05); }
+
+  .share-btn {
+    display: block;
+    margin: 10px auto 0;
+    background: var(--surface);
+    color: var(--text);
+    border: 2px solid var(--border);
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+  }
+  .share-btn:hover { background: var(--hint-bg); }
+  .share-btn[hidden] { display: none; }
 
   /* The piece is the falling/drifting wrapper; the inner span does the
      spinning. Splitting them keeps both transforms alive - a single element
@@ -616,7 +657,9 @@
     <div class="modal-label">The word was</div>
     <div class="word-reveal" id="modal-word"></div>
     <div class="definition" id="modal-definition"></div>
+    <div class="score" id="modal-score" hidden></div>
     <button class="play-again" id="play-again-btn">Play Again</button>
+    <button class="share-btn" id="share-btn" hidden>💌 Share with Grandma</button>
   </div>
 </div>
 
@@ -1603,6 +1646,11 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
   // guesses have been made, and each later one needs another guess after the
   // previous hint - so a player cannot open all three before trying.
   let lastHintRow = -1;
+  // Per-row evaluate results, kept only to redraw the round as an emoji grid
+  // in the share text. `winTries` is captured at the winning guess rather
+  // than read off currentRow later, so it can't drift.
+  let guessResults = [];
+  let winTries = 0;
   let messageTimer = null;
   const MAX_HINTS = 3;
   const HINTS_AFTER = 3;
@@ -1630,6 +1678,8 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
   const modalTitle = document.getElementById("modal-title");
   const modalWord = document.getElementById("modal-word");
   const modalDefinition = document.getElementById("modal-definition");
+  const modalScore = document.getElementById("modal-score");
+  const shareBtn = document.getElementById("share-btn");
   const playAgainBtn = document.getElementById("play-again-btn");
 
   // ---------- Sound effects (Web Audio API, no external files) ----------
@@ -1752,6 +1802,8 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
     isRevealing = false;
     hintLevel = 0;
     lastHintRow = -1;
+    guessResults = [];
+    winTries = 0;
     Object.keys(keyStatus).forEach((k) => delete keyStatus[k]);
     hintBox.innerHTML = "";
     clearMessage();
@@ -1860,8 +1912,10 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
     const result = evaluateGuess(currentGuess, targetWord);
     const guessedRow = currentRow;
     revealRow(guessedRow, currentGuess, result);
+    guessResults.push(result);
 
     const won = currentGuess === targetWord;
+    if (won) winTries = guessedRow + 1;
     const lastRow = currentRow === ROWS - 1;
 
     isRevealing = true;
@@ -1970,15 +2024,88 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
     "🎈 You did it!"
   ];
 
+  function tries(n) {
+    return n === 1 ? "1 try" : `${n} tries`;
+  }
+
+  function hintCount(n) {
+    return n === 1 ? "1 hint" : `${n} hints`;
+  }
+
   function showEndModal(won) {
     modalTitle.textContent = won
       ? WIN_TITLES[Math.floor(Math.random() * WIN_TITLES.length)]
       : "Good try!";
     modalWord.textContent = targetWord;
     modalDefinition.textContent = targetHint;
+
+    // Score and sharing are win-only: nobody wants to text Grandma a loss.
+    modalScore.innerHTML = "";
+    if (won) {
+      const triesPill = document.createElement("span");
+      triesPill.textContent = `🎯 ${tries(winTries)}`;
+      const hintsPill = document.createElement("span");
+      hintsPill.textContent =
+        hintLevel === 0 ? "💡 No hints" : `💡 ${hintCount(hintLevel)}`;
+      modalScore.append(triesPill, hintsPill);
+    }
+    modalScore.hidden = !won;
+    shareBtn.hidden = !won;
+
     overlay.classList.add("show");
     playAgainBtn.focus();
   }
+
+  // ---------- Share ----------
+  const SHARE_URL = "https://magooru3.github.io/WFK/kids-wordle.html";
+  const SQUARES = { correct: "🟩", present: "🟨", absent: "⬜" };
+
+  function buildShareText() {
+    const grid = guessResults
+      .map((row) => row.map((s) => SQUARES[s]).join(""))
+      .join("\n");
+    const hints = hintLevel === 0 ? "no hints" : hintCount(hintLevel);
+    return (
+      `🐶 Wordle with Phoebe\n` +
+      `I got ${targetWord} in ${tries(winTries)} with ${hints}!\n\n` +
+      `${grid}\n\nPlay along: ${SHARE_URL}`
+    );
+  }
+
+  // navigator.share is what opens iOS's share sheet (Messages included) and
+  // it only works from inside the click gesture, so no awaiting anything
+  // before calling it. Desktop browsers without it fall back to the
+  // clipboard, and a phone with neither gets an SMS deep link.
+  async function shareResult() {
+    const text = buildShareText();
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch (err) {
+        // The user closing the share sheet is not a failure worth reporting.
+        if (err && err.name === "AbortError") return;
+      }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setMessage("Copied! Paste it into a message 💌", 2200);
+        return;
+      } catch (err) {
+        /* fall through to the SMS link */
+      }
+    }
+    // iOS wants `sms:&body=`; Android wants `sms:?body=`. Neither has a
+    // number, so the recipient is picked in Messages.
+    const sep = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? "&" : "?";
+    window.location.href = `sms:${sep}body=${encodeURIComponent(text)}`;
+  }
+
+  shareBtn.addEventListener("click", () => {
+    shareBtn.blur();
+    shareResult();
+  });
 
   playAgainBtn.addEventListener("click", () => {
     playAgainBtn.blur();
