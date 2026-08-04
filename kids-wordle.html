@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Kids Wordle</title>
+<title>Wordle with Phoebe</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Kids Wordle">
+<meta name="apple-mobile-web-app-title" content="Wordle with Phoebe">
 <meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121213" media="(prefers-color-scheme: dark)">
@@ -587,7 +587,7 @@
      wrappers are invisible to layout. Landscape turns them into real columns. -->
 <div class="panel">
   <header>
-    <h1>🐣 Kids Wordle</h1>
+    <h1>🐶 Wordle with Phoebe</h1>
     <div class="subtitle">Guess the 5-letter word in 6 tries!</div>
     <div class="grade-selector" id="grade-selector">
       <button class="grade-btn" data-grade="k1">K–1</button>
@@ -597,7 +597,7 @@
   </header>
 
   <div class="toolbar">
-    <button class="icon-btn" id="hint-btn">💡 Hint (3 left)</button>
+    <button class="icon-btn" id="hint-btn" disabled>🔒 Hint after 3 tries</button>
     <button class="icon-btn" id="new-word-btn">🔄 New Word</button>
   </div>
   <div id="hint-box"></div>
@@ -1598,8 +1598,14 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
   // because gameOver only flips once the reveal timer fires.
   let isRevealing = false;
   let hintLevel = 0;
+  // Row index the last hint was taken on (-1 = none yet). Hints are rationed
+  // against guesses, not clicks: the first one only unlocks once HINTS_AFTER
+  // guesses have been made, and each later one needs another guess after the
+  // previous hint - so a player cannot open all three before trying.
+  let lastHintRow = -1;
   let messageTimer = null;
   const MAX_HINTS = 3;
+  const HINTS_AFTER = 3;
   const ROWS = 6;
   const COLS = 5;
   const REVEAL_MS = COLS * 120 + 400;
@@ -1745,11 +1751,11 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
     gameOver = false;
     isRevealing = false;
     hintLevel = 0;
+    lastHintRow = -1;
     Object.keys(keyStatus).forEach((k) => delete keyStatus[k]);
     hintBox.innerHTML = "";
     clearMessage();
     overlay.classList.remove("show");
-    hintBtn.disabled = false;
     updateHintButtonLabel();
     buildBoard();
     buildKeyboard();
@@ -1758,9 +1764,33 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
     });
   }
 
+  // A hint is only available once the player has made HINTS_AFTER guesses,
+  // and then only one per further guess.
+  function guessesUntilHint() {
+    const needed = Math.max(HINTS_AFTER, lastHintRow + 1);
+    return Math.max(0, needed - currentRow);
+  }
+
+  function hintAvailable() {
+    return !gameOver && hintLevel < MAX_HINTS && guessesUntilHint() === 0;
+  }
+
+  // Single source of truth for both the label and the disabled state, so the
+  // button can never look available while the click handler refuses.
   function updateHintButtonLabel() {
     const left = MAX_HINTS - hintLevel;
-    hintBtn.textContent = left > 0 ? `💡 Hint (${left} left)` : "💡 No more hints";
+    if (left <= 0) {
+      hintBtn.textContent = "💡 No more hints";
+    } else {
+      const wait = guessesUntilHint();
+      if (wait > 0) {
+        hintBtn.textContent =
+          wait === 1 ? "🔒 Hint after 1 more try" : `🔒 Hint after ${wait} tries`;
+      } else {
+        hintBtn.textContent = `💡 Hint (${left} left)`;
+      }
+    }
+    hintBtn.disabled = !hintAvailable();
   }
 
   // Messages are transient: show the pill, then fade it out on its own so a
@@ -1849,6 +1879,9 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
         playLoseSound();
         showEndModal(false);
       }
+      // currentRow advanced synchronously below, but the hint only unlocks
+      // once the row has actually finished revealing.
+      updateHintButtonLabel();
     }, REVEAL_MS);
 
     currentRow++;
@@ -1957,7 +1990,7 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
   });
 
   // ---------- Hint ----------
-  // Three tiers, unlocked one click at a time and shown cumulatively so
+  // Three tiers, earned one guess at a time and shown cumulatively so
   // earlier hints stay visible: a vague category, then the fuller
   // definition, then that definition plus the first letter. Only the last
   // tier reveals any letter, and only ever the first one.
@@ -1982,11 +2015,11 @@ zooms zoons zooty zoril zoris zowie zymes`.trim().split(/\s+/).map((w) => w.toUp
 
   hintBtn.addEventListener("click", () => {
     hintBtn.blur();
-    if (gameOver || hintLevel >= MAX_HINTS) return;
+    if (!hintAvailable()) return;
     hintLevel++;
+    lastHintRow = currentRow;
     hintBox.appendChild(renderHint(hintLevel));
     updateHintButtonLabel();
-    if (hintLevel >= MAX_HINTS) hintBtn.disabled = true;
   });
 
   // ---------- Grade selector ----------
