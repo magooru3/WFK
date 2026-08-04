@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A single self-contained HTML file, `kids-wordle.html` — a Wordle clone for kids with grade-leveled word lists (K–1, 2–3, 4–5). There is no build system, no package manager, no dependencies, and no test suite. All markup, CSS, and JavaScript live in that one file (`<style>` in `<head>`, an IIFE `<script>` at the end of `<body>`).
+A single self-contained HTML file, `kids-wordle.html` — "Wordle with Phoebe", a Wordle clone for kids with grade-leveled word lists (K–1, 2–3, 4–5). There is no build system, no package manager, no dependencies, and no test suite. All markup, CSS, and JavaScript live in that one file (`<style>` in `<head>`, an IIFE `<script>` at the end of `<body>`).
 
 ## Working with the code
 
@@ -37,7 +37,9 @@ The `main` branch is served via GitHub Pages (`https://magooru3.github.io/WFK/ki
 
 **Game state** is a flat set of module-scoped `let`s at the top of the IIFE (`grade`, `targetWord`, `targetHint`, `targetCategory`, `currentGuess`, `currentRow`, `gameOver`, `hintLevel`, `keyStatus`). `resetGame(newGrade)` is the single reset path — called on grade switch, "New Word", and "Play Again" — and re-picks a word, rebuilds the board/keyboard DOM from scratch (`buildBoard()`/`buildKeyboard()`), and clears hint state.
 
-**Progressive hints.** `hintLevel` (0–3) gates `hintText(level)`: level 1 is the category, level 2 the definition, level 3 the definition plus the first letter as a letter skeleton (`M _ _ _ _`) — only that last tier ever reveals a letter, and only the first one. Hints render cumulatively (each click appends a `<div>` to `#hint-box` rather than replacing it). The hint button's label and disabled state are kept in sync via `updateHintButtonLabel()`.
+**Progressive hints.** `hintLevel` (0–3) gates `hintText(level)`: level 1 is the category, level 2 the definition, level 3 the definition plus the first letter as a letter skeleton (`M _ _ _ _`) — only that last tier ever reveals a letter, and only the first one. Hints render cumulatively (each click appends a `<div>` to `#hint-box` rather than replacing it).
+
+Hints are rationed against *guesses*, not clicks: `hintAvailable()` requires `HINTS_AFTER` (3) completed guesses before the first one, and then one further guess after each hint (tracked by `lastHintRow`), so the three tiers land at rows 3/4/5 at the earliest and all three are still reachable within six turns. A rejected guess doesn't advance `currentRow`, so it earns no hint progress. `updateHintButtonLabel()` is the single source of truth for both the label (`🔒 Hint after N tries` vs `💡 Hint (N left)`) and `disabled`, so the button can't look clickable while the handler refuses; it's called from `resetGame()` and from the reveal `setTimeout` — not right after `currentRow++`, which happens synchronously while the row is still flipping.
 
 **Input handling is unified**: physical keydown, on-screen keyboard clicks, and touch taps all funnel through `handleKeyInput(key)`. Two load-bearing details there:
 - Every interactive button calls `.blur()` on click/tap before running its handler. Without it, a focused button (e.g. a grade selector) natively re-activates on a subsequent physical Enter keydown and silently resets the board mid-guess; this was a real regression, not defensive boilerplate. The global `keydown` listener also calls `preventDefault()` for the same reason.
