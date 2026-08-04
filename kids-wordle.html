@@ -416,7 +416,7 @@
 </header>
 
 <div class="toolbar">
-  <button class="icon-btn" id="hint-btn">💡 Hint</button>
+  <button class="icon-btn" id="hint-btn">💡 Hint (3 left)</button>
   <button class="icon-btn" id="new-word-btn">🔄 New Word</button>
 </div>
 <div id="hint-box"></div>
@@ -440,107 +440,111 @@
   "use strict";
 
   // ---------- Word lists ----------
+  // Each entry is [WORD, definition, category]. `category` is the vague,
+  // no-letters-given first hint; `definition` is the more specific second
+  // hint (and the answer explainer shown after a win); the third hint
+  // layers the first letter on top of the definition.
   const WORD_LISTS = {
     k1: [
-      ["HAPPY", "This word means feeling really glad and smiling."],
-      ["WATER", "You drink this and swim in it."],
-      ["HOUSE", "A building where a family lives."],
-      ["SMILE", "Your face does this when you are happy."],
-      ["APPLE", "A crunchy fruit that can be red or green."],
-      ["HORSE", "A big animal you can ride."],
-      ["MUSIC", "Sounds you can sing or dance to."],
-      ["PARTY", "A fun celebration with friends and treats."],
-      ["SHEEP", "A fluffy farm animal that says baa."],
-      ["SNAKE", "A long animal with no legs that slithers."],
-      ["TIGER", "A big wild cat with orange and black stripes."],
-      ["TOOTH", "You use this in your mouth to chew."],
-      ["BREAD", "You use this to make a sandwich."],
-      ["CHAIR", "You sit on this."],
-      ["CLOCK", "This tells you what time it is."],
-      ["CANDY", "A sweet treat you love to eat."],
-      ["CLOWN", "A funny person at the circus."],
-      ["MOMMY", "Another word for your mother."],
-      ["SUGAR", "A sweet white ingredient used in baking."],
-      ["BUNNY", "A soft animal that hops and has long ears."],
-      ["PUPPY", "A baby dog."],
-      ["KITTY", "A baby cat."],
-      ["BEACH", "A sandy place next to the ocean."],
-      ["GRAPE", "A small round fruit that grows in bunches."],
-      ["LEMON", "A sour yellow fruit."],
-      ["PIZZA", "A round food with cheese and toppings."],
-      ["ROBOT", "A machine that can move and do jobs."],
-      ["SHARK", "A big fish with sharp teeth in the ocean."],
-      ["WHALE", "A huge animal that lives in the ocean."],
-      ["ZEBRA", "An animal like a horse with black and white stripes."]
+      ["HAPPY", "This word means feeling really glad and smiling.", "a feeling"],
+      ["WATER", "You drink this and swim in it.", "something you drink"],
+      ["HOUSE", "A building where a family lives.", "a place"],
+      ["SMILE", "Your face does this when you are happy.", "something your face does"],
+      ["APPLE", "A crunchy fruit that can be red or green.", "a fruit"],
+      ["HORSE", "A big animal you can ride.", "an animal"],
+      ["MUSIC", "Sounds you can sing or dance to.", "something you hear"],
+      ["PARTY", "A fun celebration with friends and treats.", "a celebration"],
+      ["SHEEP", "A fluffy farm animal that says baa.", "a farm animal"],
+      ["SNAKE", "A long animal with no legs that slithers.", "an animal"],
+      ["TIGER", "A big wild cat with orange and black stripes.", "a wild animal"],
+      ["TOOTH", "You use this in your mouth to chew.", "a body part"],
+      ["BREAD", "You use this to make a sandwich.", "a food"],
+      ["CHAIR", "You sit on this.", "a piece of furniture"],
+      ["CLOCK", "This tells you what time it is.", "something that tells time"],
+      ["CANDY", "A sweet treat you love to eat.", "a sweet food"],
+      ["CLOWN", "A funny person at the circus.", "a person"],
+      ["MOMMY", "Another word for your mother.", "a family member"],
+      ["SUGAR", "A sweet white ingredient used in baking.", "a food ingredient"],
+      ["BUNNY", "A soft animal that hops and has long ears.", "an animal"],
+      ["PUPPY", "A baby dog.", "a baby animal"],
+      ["KITTY", "A baby cat.", "a baby animal"],
+      ["BEACH", "A sandy place next to the ocean.", "a place"],
+      ["GRAPE", "A small round fruit that grows in bunches.", "a fruit"],
+      ["LEMON", "A sour yellow fruit.", "a fruit"],
+      ["PIZZA", "A round food with cheese and toppings.", "a food"],
+      ["ROBOT", "A machine that can move and do jobs.", "a machine"],
+      ["SHARK", "A big fish with sharp teeth in the ocean.", "an ocean animal"],
+      ["WHALE", "A huge animal that lives in the ocean.", "an ocean animal"],
+      ["ZEBRA", "An animal like a horse with black and white stripes.", "an animal"]
     ],
     g23: [
-      ["PLANT", "A living thing that grows in soil, like a flower or tree."],
-      ["STORY", "A tale you read or tell, with characters and events."],
-      ["DANCE", "To move your body to music."],
-      ["OCEAN", "A huge body of salty water."],
-      ["RIVER", "A long stream of water that flows to the sea."],
-      ["FIELD", "A big open piece of grassy land."],
-      ["CLOUD", "A fluffy white shape floating in the sky."],
-      ["STORM", "Wild weather with rain, wind, or thunder."],
-      ["LIGHT", "Something that helps you see in the dark."],
-      ["NIGHT", "The time of day when it is dark and you sleep."],
-      ["SOUND", "Something you hear with your ears."],
-      ["SMELL", "Something you notice with your nose."],
-      ["TASTE", "Something you notice with your tongue."],
-      ["TOUCH", "Something you feel with your fingers."],
-      ["GRASS", "The green plant that covers a lawn."],
-      ["STONE", "A small hard rock."],
-      ["BRICK", "A hard block used to build walls."],
-      ["GLASS", "A clear material used to make windows."],
-      ["PAINT", "Colorful liquid used to make pictures."],
-      ["BRUSH", "A tool with bristles used to paint or comb hair."],
-      ["SPOON", "A utensil you use to eat soup or cereal."],
-      ["TABLE", "A piece of furniture you eat or work on."],
-      ["CHESS", "A board game played with kings and queens."],
-      ["MONEY", "Coins and bills used to buy things."],
-      ["PIANO", "A big instrument with black and white keys."],
-      ["FRUIT", "A sweet food that grows on plants, like an apple."],
-      ["BERRY", "A small round juicy fruit that often grows on a bush."],
-      ["HONEY", "A sweet golden food made by bees."]
+      ["PLANT", "A living thing that grows in soil, like a flower or tree.", "a living thing"],
+      ["STORY", "A tale you read or tell, with characters and events.", "something you read"],
+      ["DANCE", "To move your body to music.", "something you do"],
+      ["OCEAN", "A huge body of salty water.", "a body of water"],
+      ["RIVER", "A long stream of water that flows to the sea.", "a body of water"],
+      ["FIELD", "A big open piece of grassy land.", "a place"],
+      ["CLOUD", "A fluffy white shape floating in the sky.", "something in the sky"],
+      ["STORM", "Wild weather with rain, wind, or thunder.", "a type of weather"],
+      ["LIGHT", "Something that helps you see in the dark.", "something you see"],
+      ["NIGHT", "The time of day when it is dark and you sleep.", "a time of day"],
+      ["SOUND", "Something you hear with your ears.", "something you hear"],
+      ["SMELL", "Something you notice with your nose.", "one of your senses"],
+      ["TASTE", "Something you notice with your tongue.", "one of your senses"],
+      ["TOUCH", "Something you feel with your fingers.", "one of your senses"],
+      ["GRASS", "The green plant that covers a lawn.", "a plant"],
+      ["STONE", "A small hard rock.", "an object"],
+      ["BRICK", "A hard block used to build walls.", "a building material"],
+      ["GLASS", "A clear material used to make windows.", "a material"],
+      ["PAINT", "Colorful liquid used to make pictures.", "an art supply"],
+      ["BRUSH", "A tool with bristles used to paint or comb hair.", "a tool"],
+      ["SPOON", "A utensil you use to eat soup or cereal.", "a utensil"],
+      ["TABLE", "A piece of furniture you eat or work on.", "a piece of furniture"],
+      ["CHESS", "A board game played with kings and queens.", "a game"],
+      ["MONEY", "Coins and bills used to buy things.", "something you use to buy things"],
+      ["PIANO", "A big instrument with black and white keys.", "a musical instrument"],
+      ["FRUIT", "A sweet food that grows on plants, like an apple.", "a type of food"],
+      ["BERRY", "A small round juicy fruit that often grows on a bush.", "a type of fruit"],
+      ["HONEY", "A sweet golden food made by bees.", "a type of food"]
     ],
     g45: [
-      ["BRAVE", "Having courage even when you are scared."],
-      ["QUICK", "Moving very fast."],
-      ["PLANE", "A flying machine that carries people in the sky."],
-      ["EAGLE", "A large bird that hunts and flies very high."],
-      ["MAGIC", "Amazing things that seem impossible, like in fairy tales."],
-      ["DREAM", "Pictures and stories your mind makes while you sleep."],
-      ["PEACE", "A calm feeling with no fighting or noise."],
-      ["POWER", "The strength or energy to do something."],
-      ["SHINE", "To glow brightly, like the sun."],
-      ["SPARK", "A tiny flash of light or fire."],
-      ["TRUST", "Believing that someone will not let you down."],
-      ["HONOR", "Great respect shown to someone who did something good."],
-      ["PRIDE", "A happy feeling about something you did well."],
-      ["GLORY", "Great fame and honor for doing something amazing."],
-      ["LEARN", "To gain new knowledge or a new skill."],
-      ["STUDY", "To work hard at learning something."],
-      ["WORLD", "The whole planet Earth and everything on it."],
-      ["EARTH", "The planet we all live on."],
-      ["SPACE", "The huge area beyond Earth with stars and planets."],
-      ["GHOST", "A spooky spirit in stories, said to haunt places."],
-      ["GIANT", "A huge, very tall creature in stories."],
-      ["CROWN", "A fancy hat worn by a king or queen."],
-      ["SWORD", "A long sharp blade used by knights."],
-      ["ARROW", "A pointed stick shot from a bow."],
-      ["FLAME", "The bright hot part of a fire."],
-      ["FROST", "A thin icy layer that forms on cold mornings."],
-      ["NORTH", "The direction toward the top of a map."],
-      ["SOUTH", "The direction toward the bottom of a map."],
-      ["BRAIN", "The organ in your head that helps you think."],
-      ["HEART", "The organ that pumps blood and can mean love."],
-      ["SOLVE", "To figure out the answer to a problem."],
-      ["THINK", "To use your brain to have ideas."],
-      ["WRITE", "To put words down on paper."],
-      ["SPELL", "To say or write the letters of a word in order."],
-      ["LOGIC", "Clear thinking used to solve problems."],
-      ["SCALE", "A tool used to weigh things, or the size of something."],
-      ["GRAPH", "A picture that shows information using bars or lines."]
+      ["BRAVE", "Having courage even when you are scared.", "a way to describe someone"],
+      ["QUICK", "Moving very fast.", "a way to describe speed"],
+      ["PLANE", "A flying machine that carries people in the sky.", "a vehicle"],
+      ["EAGLE", "A large bird that hunts and flies very high.", "a bird"],
+      ["MAGIC", "Amazing things that seem impossible, like in fairy tales.", "something in fairy tales"],
+      ["DREAM", "Pictures and stories your mind makes while you sleep.", "something that happens while sleeping"],
+      ["PEACE", "A calm feeling with no fighting or noise.", "a feeling or state"],
+      ["POWER", "The strength or energy to do something.", "an ability"],
+      ["SHINE", "To glow brightly, like the sun.", "something light does"],
+      ["SPARK", "A tiny flash of light or fire.", "something related to fire"],
+      ["TRUST", "Believing that someone will not let you down.", "a feeling between people"],
+      ["HONOR", "Great respect shown to someone who did something good.", "a kind of respect"],
+      ["PRIDE", "A happy feeling about something you did well.", "a feeling"],
+      ["GLORY", "Great fame and honor for doing something amazing.", "a kind of fame"],
+      ["LEARN", "To gain new knowledge or a new skill.", "something you do at school"],
+      ["STUDY", "To work hard at learning something.", "something you do at school"],
+      ["WORLD", "The whole planet Earth and everything on it.", "a very big place"],
+      ["EARTH", "The planet we all live on.", "a planet"],
+      ["SPACE", "The huge area beyond Earth with stars and planets.", "something beyond our planet"],
+      ["GHOST", "A spooky spirit in stories, said to haunt places.", "a spooky story character"],
+      ["GIANT", "A huge, very tall creature in stories.", "a story character"],
+      ["CROWN", "A fancy hat worn by a king or queen.", "something royal"],
+      ["SWORD", "A long sharp blade used by knights.", "a weapon"],
+      ["ARROW", "A pointed stick shot from a bow.", "a weapon"],
+      ["FLAME", "The bright hot part of a fire.", "part of a fire"],
+      ["FROST", "A thin icy layer that forms on cold mornings.", "a type of weather"],
+      ["NORTH", "The direction toward the top of a map.", "a direction"],
+      ["SOUTH", "The direction toward the bottom of a map.", "a direction"],
+      ["BRAIN", "The organ in your head that helps you think.", "a body part"],
+      ["HEART", "The organ that pumps blood and can mean love.", "a body part"],
+      ["SOLVE", "To figure out the answer to a problem.", "something you do with a problem"],
+      ["THINK", "To use your brain to have ideas.", "something your brain does"],
+      ["WRITE", "To put words down on paper.", "something you do with a pencil"],
+      ["SPELL", "To say or write the letters of a word in order.", "something you do with letters"],
+      ["LOGIC", "Clear thinking used to solve problems.", "a way of thinking"],
+      ["SCALE", "A tool used to weigh things, or the size of something.", "a tool"],
+      ["GRAPH", "A picture that shows information using bars or lines.", "something with numbers"]
     ]
   };
 
@@ -550,11 +554,13 @@
   let grade = "k1";
   let targetWord = "";
   let targetHint = "";
+  let targetCategory = "";
   let guesses = [];
   let currentGuess = "";
   let currentRow = 0;
   let gameOver = false;
-  let hintUsed = false;
+  let hintLevel = 0;
+  const MAX_HINTS = 3;
   const ROWS = 6;
   const COLS = 5;
   const keyStatus = {};
@@ -666,7 +672,7 @@
   function pickWord(g) {
     const list = WORD_LISTS[g];
     const entry = list[Math.floor(Math.random() * list.length)];
-    return { word: entry[0], hint: entry[1] };
+    return { word: entry[0], hint: entry[1], category: entry[2] };
   }
 
   function resetGame(newGrade) {
@@ -674,21 +680,28 @@
     const picked = pickWord(grade);
     targetWord = picked.word;
     targetHint = picked.hint;
+    targetCategory = picked.category;
     guesses = [];
     currentGuess = "";
     currentRow = 0;
     gameOver = false;
-    hintUsed = false;
+    hintLevel = 0;
     Object.keys(keyStatus).forEach((k) => delete keyStatus[k]);
-    hintBox.textContent = "";
+    hintBox.innerHTML = "";
     setMessage("");
     overlay.classList.remove("show");
     hintBtn.disabled = false;
+    updateHintButtonLabel();
     buildBoard();
     buildKeyboard();
     document.querySelectorAll(".grade-btn").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.grade === grade);
     });
+  }
+
+  function updateHintButtonLabel() {
+    const left = MAX_HINTS - hintLevel;
+    hintBtn.textContent = left > 0 ? `💡 Hint (${left} left)` : "💡 No more hints";
   }
 
   function setMessage(text) {
@@ -841,11 +854,29 @@
   });
 
   // ---------- Hint ----------
+  // Three tiers, unlocked one click at a time and shown cumulatively so
+  // earlier hints stay visible: a vague category, then the fuller
+  // definition, then that definition plus the first letter. Only the last
+  // tier reveals any letter, and only ever the first one.
+  function hintText(level) {
+    if (level === 1) return `Hint 1: It's ${targetCategory}.`;
+    if (level === 2) return `Hint 2: ${targetHint}`;
+    if (level === 3) {
+      const skeleton = targetWord[0] + " " + "_ ".repeat(targetWord.length - 1).trim();
+      return `Hint 3: ${targetHint} It starts with the letter ${targetWord[0]} — ${skeleton}`;
+    }
+    return "";
+  }
+
   hintBtn.addEventListener("click", () => {
     hintBtn.blur();
-    if (gameOver) return;
-    hintBox.textContent = "💡 Hint: " + targetHint;
-    hintUsed = true;
+    if (gameOver || hintLevel >= MAX_HINTS) return;
+    hintLevel++;
+    const line = document.createElement("div");
+    line.textContent = hintText(hintLevel);
+    hintBox.appendChild(line);
+    updateHintButtonLabel();
+    if (hintLevel >= MAX_HINTS) hintBtn.disabled = true;
   });
 
   // ---------- Grade selector ----------
