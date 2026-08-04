@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Kids Wordle</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kids Wordle">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#ffffff">
 <style>
   :root {
     --correct: #6aaa64;
@@ -15,6 +21,11 @@
     --bg: #ffffff;
   }
   * { box-sizing: border-box; }
+  html {
+    /* iOS Safari toolbar-safe viewport height */
+    height: 100%;
+    overscroll-behavior-y: none;
+  }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
@@ -25,9 +36,14 @@
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
-    padding: 12px 8px 24px;
+    min-height: 100dvh;
+    /* Clear the iPhone notch/Dynamic Island and home indicator in both orientations */
+    padding: max(12px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+             max(24px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
+    touch-action: manipulation;
   }
 
   header {
@@ -68,6 +84,8 @@
     font-weight: 700;
     font-size: 0.9rem;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
     transition: transform 0.1s, background 0.15s, color 0.15s;
   }
 
@@ -95,6 +113,8 @@
     font-weight: 700;
     font-size: 0.85rem;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
   }
 
   .icon-btn:hover { background: #f4f4f4; }
@@ -135,6 +155,7 @@
     font-weight: 800;
     text-transform: uppercase;
     user-select: none;
+    -webkit-touch-callout: none;
     transform-style: preserve-3d;
     transition: transform 0.15s;
   }
@@ -185,7 +206,9 @@
   }
 
   #keyboard {
-    width: min(500px, 98vw);
+    /* Match the body's horizontal padding exactly so nothing clips on
+       narrow phones (98vw alone was ~2px too wide once padding is added). */
+    width: min(500px, calc(100vw - 16px));
     margin: 8px auto 0;
     user-select: none;
   }
@@ -211,6 +234,9 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
     transition: background 0.15s;
   }
 
@@ -275,6 +301,8 @@
     font-weight: 700;
     font-size: 1rem;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
   }
   .play-again:hover { filter: brightness(1.05); }
 
@@ -292,9 +320,86 @@
     to { transform: translateY(105vh) rotate(360deg); opacity: 0.4; }
   }
 
+  /* ---- Small phones (iPhone SE / mini, portrait) ---- */
   @media (max-width: 380px) {
     .tile { font-size: 1.4rem; }
     .key { height: 46px; font-size: 0.85rem; }
+  }
+
+  /* ---- Touch tablets (iPad and similar): more room, so use it ---- */
+  @media (min-width: 700px) and (pointer: coarse) {
+    header { max-width: 620px; padding-bottom: 16px; }
+    h1 { font-size: 2.6rem; }
+    .subtitle { font-size: 1rem; }
+    .grade-btn { font-size: 1.05rem; padding: 10px 22px; }
+    .icon-btn { font-size: 1rem; padding: 8px 18px; }
+    #hint-box, #message-bar { font-size: 1.05rem; max-width: 460px; }
+
+    #board { width: min(430px, 60vw); gap: 8px; padding: 10px; }
+    .tile { font-size: 2.3rem; }
+
+    #keyboard { width: min(640px, 82vw); margin-top: 16px; }
+    .kb-row { gap: 8px; margin-bottom: 8px; }
+    .key { max-width: 58px; height: 64px; font-size: 1.25rem; border-radius: 8px; }
+    .key.wide { max-width: 84px; font-size: 0.95rem; }
+
+    .modal { padding: 32px; width: min(420px, 70vw); }
+    .modal h2 { font-size: 1.8rem; }
+    .modal .word-reveal { font-size: 2.1rem; }
+    .modal .definition { font-size: 1.05rem; }
+  }
+
+  /* ---- iPhone landscape: short viewport. Stacking everything vertically would
+     force scrolling mid-guess, so reflow into two columns instead: info/controls
+     on the left, board + keyboard stacked on the right, using the width
+     landscape actually gives you. ---- */
+  @media (pointer: coarse) and (max-height: 500px) and (orientation: landscape) {
+    body {
+      display: grid;
+      grid-template-columns: minmax(150px, 210px) auto;
+      grid-template-rows: auto auto auto auto;
+      column-gap: 18px;
+      row-gap: 4px;
+      align-items: start;
+      justify-items: start;
+      padding-top: max(8px, env(safe-area-inset-top));
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    header {
+      grid-column: 1;
+      grid-row: 1;
+      width: 100%;
+      max-width: none;
+      text-align: left;
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+    .subtitle { font-size: 0.7rem; margin-bottom: 6px; }
+    h1 { font-size: 1.3rem; margin: 0 0 2px; }
+    .grade-selector { justify-content: flex-start; }
+    .grade-btn { padding: 4px 10px; font-size: 0.75rem; }
+
+    .toolbar { grid-column: 1; grid-row: 2; justify-content: flex-start; margin: 2px 0; }
+    .icon-btn { padding: 4px 10px; font-size: 0.75rem; }
+
+    #hint-box { grid-column: 1; grid-row: 3; text-align: left; max-width: 200px; min-height: 0; }
+    #message-bar { grid-column: 1; grid-row: 4; text-align: left; min-height: 0; padding: 2px 0; }
+
+    #board { grid-column: 2; grid-row: 1; width: min(220px, 38vh); gap: 4px; margin: 0; padding: 0; }
+    .tile { font-size: 1.1rem; }
+
+    #keyboard { grid-column: 2; grid-row: 2; width: min(360px, 60vw); margin: 6px 0 0; }
+    .kb-row { gap: 4px; margin-bottom: 4px; }
+    .key { height: 36px; font-size: 0.75rem; }
+  }
+
+  /* ---- iPad landscape gets the tablet rules above, but the tablet board
+     width would run taller than the shorter landscape viewport, so cap it
+     by viewport height instead of width here. ---- */
+  @media (min-width: 900px) and (pointer: coarse) and (orientation: landscape) {
+    #board { width: min(400px, 30vh); }
   }
 </style>
 </head>
